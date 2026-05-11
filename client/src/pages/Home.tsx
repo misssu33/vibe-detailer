@@ -2,7 +2,6 @@
    Vibe Detailer — Home Page
    Design: Atelier Board / Craft Minimal
    ═══════════════════════════════════════════════ */
-
 import { useState, useCallback } from "react";
 import HeroSection from "@/components/HeroSection";
 import InputPanel from "@/components/InputPanel";
@@ -14,9 +13,11 @@ import Footer from "@/components/Footer";
 import {
   type CategoryId,
   type DnaId,
+  type DnaProfile,
   type GenerationMode,
   type StoryboardResult,
   generateStoryboard,
+  generateStoryboardWithProfile,
   recommendDna,
   DNA_DATABASE,
 } from "@/lib/sop-engine";
@@ -33,6 +34,7 @@ export default function Home() {
   const [recommendedDnas, setRecommendedDnas] = useState<DnaId[]>([]);
   const [storyboard, setStoryboard] = useState<StoryboardResult | null>(null);
   const [activePromptIndex, setActivePromptIndex] = useState(0);
+  const [customDna, setCustomDna] = useState<DnaProfile | null>(null);
 
   // ─── Handlers ───
   const handleInputSubmit = useCallback(() => {
@@ -41,7 +43,6 @@ export default function Home() {
     setRecommendedDnas(dnas);
     setSelectedDna(dnas[0]);
     setStep('dna');
-    // Smooth scroll
     setTimeout(() => {
       document.getElementById('dna-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -49,14 +50,26 @@ export default function Home() {
 
   const handleDnaConfirm = useCallback(() => {
     if (!selectedDna || !category) return;
-    const result = generateStoryboard(category, selectedDna, mode, productName);
+
+    let result: StoryboardResult;
+    if (selectedDna === 'CUSTOM' && customDna) {
+      // Use custom DNA profile directly
+      result = generateStoryboardWithProfile(category, customDna, mode, productName);
+    } else {
+      result = generateStoryboard(category, selectedDna, mode, productName);
+    }
+
     setStoryboard(result);
     setActivePromptIndex(0);
     setStep('storyboard');
     setTimeout(() => {
       document.getElementById('storyboard-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
-  }, [selectedDna, category, mode, productName]);
+  }, [selectedDna, category, mode, productName, customDna]);
+
+  const handleCustomDnaSave = useCallback((dna: DnaProfile) => {
+    setCustomDna(dna);
+  }, []);
 
   const handleReset = useCallback(() => {
     setStep('input');
@@ -69,8 +82,15 @@ export default function Home() {
     setRecommendedDnas([]);
     setStoryboard(null);
     setActivePromptIndex(0);
+    // Keep customDna across resets so user doesn't lose their work
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  // Resolve the active DNA profile for display
+  const activeDnaProfile: DnaProfile | null =
+    selectedDna === 'CUSTOM' ? customDna :
+    selectedDna ? (DNA_DATABASE[selectedDna] || null) :
+    null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -103,6 +123,8 @@ export default function Home() {
               onSelectDna={setSelectedDna}
               onConfirm={handleDnaConfirm}
               category={category!}
+              customDna={customDna}
+              onCustomDnaSave={handleCustomDnaSave}
             />
           </div>
         )}
@@ -115,19 +137,16 @@ export default function Home() {
                 storyboard={storyboard}
                 activeIndex={activePromptIndex}
                 onSelectPage={setActivePromptIndex}
-                dna={selectedDna ? DNA_DATABASE[selectedDna] : null}
+                dna={activeDnaProfile}
                 category={category!}
               />
             </div>
-
             <PromptOutput
               storyboard={storyboard}
               activeIndex={activePromptIndex}
               onSelectPage={setActivePromptIndex}
             />
-
             <ChecklistPanel category={category!} />
-
             {/* Reset Button */}
             <div className="mt-16 text-center">
               <button
@@ -141,7 +160,6 @@ export default function Home() {
           </>
         )}
       </main>
-
       <Footer />
     </div>
   );

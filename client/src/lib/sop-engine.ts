@@ -9,7 +9,7 @@
 
 export type CategoryId = 'fashion' | 'beauty' | 'food' | 'living' | 'health' | 'digital' | 'appliance' | 'kids_pet';
 
-export type DnaId = 'DNA-01' | 'DNA-02' | 'DNA-03' | 'DNA-04' | 'DNA-05';
+export type DnaId = 'DNA-01' | 'DNA-02' | 'DNA-03' | 'DNA-04' | 'DNA-05' | 'CUSTOM';
 
 export type EmoId = 'EMO-01' | 'EMO-02' | 'EMO-03' | 'EMO-04' | 'EMO-04.5' | 'EMO-05' | 'EMO-06' | 'EMO-07' | 'EMO-08';
 
@@ -91,7 +91,7 @@ export interface StoryboardPage {
 
 // ─── DNA Database ────────────────────────────────────
 
-export const DNA_DATABASE: Record<DnaId, DnaProfile> = {
+export const DNA_DATABASE: Record<string, DnaProfile> = {
   'DNA-01': {
     id: 'DNA-01', name: '내추럴 클린', nameEn: 'Natural Clean',
     ageRange: '24-26세', faceShape: 'V라인',
@@ -684,6 +684,101 @@ export function getChecklist(): Array<{ phase: string; items: string[] }> {
     },
   ];
 }
+
+/** 커스텀 DnaProfile을 직접 사용하여 스토리보드 생성 */
+export function generateStoryboardWithProfile(
+  categoryId: CategoryId,
+  dna: DnaProfile,
+  mode: GenerationMode,
+  productName: string,
+  productColor?: string,
+): StoryboardResult {
+  const category = CATEGORY_DATABASE[categoryId];
+  const pages = getPageFlow(categoryId, mode);
+  const storyboardPages: StoryboardPage[] = pages.map(page => {
+    const emoId = typeof page.emo === 'string' && page.emo.startsWith('EMO-')
+      ? page.emo as EmoId
+      : null;
+    const emoProfile = emoId ? EMO_DATABASE[emoId] : null;
+    return {
+      slot: page,
+      emoProfile,
+      prompt: buildPrompt(dna, page, emoProfile, category, productName, productColor),
+      copyDraft: generateCopyDraft(category, page, productName),
+    };
+  });
+  return { pages: storyboardPages, mode };
+}
+
+/** 기본 커스텀 DNA 프로필 생성 */
+export function createDefaultCustomDna(): DnaProfile {
+  return {
+    id: 'CUSTOM' as DnaId,
+    name: '커스텀 DNA',
+    nameEn: 'Custom DNA',
+    ageRange: '25-30세',
+    faceShape: 'V라인',
+    skinTone: '21호 라이트 베이지',
+    skinHex: '#F2D9C4',
+    hair: '어깨 길이 자연 갈색',
+    makeup: '누드 · 코랄 립',
+    height: '165cm 슬림',
+    expressionBase: '부드러운 미소',
+    anchor: '왼쪽 입꼬리 위 작은 점',
+    platforms: [],
+    priceRange: '',
+    categories: [],
+    strength: '사용자 커스텀',
+  };
+}
+
+/** 피부톤 프리셋 옵션 */
+export const SKIN_TONE_PRESETS = [
+  { label: '13호 아이보리', hex: '#F8E8D6', tone: '13호 아이보리' },
+  { label: '21호 라이트 베이지', hex: '#F2D9C4', tone: '21호 라이트 베이지' },
+  { label: '22호 베이지', hex: '#EAD0BB', tone: '22호 베이지' },
+  { label: '23호 내추럴 베이지', hex: '#E0C4A8', tone: '23호 내추럴 베이지' },
+  { label: '뉴트럴 베이지', hex: '#EBC9B0', tone: '뉴트럴 베이지' },
+  { label: '웜 베이지', hex: '#D4B896', tone: '웜 베이지' },
+  { label: '올리브 베이지', hex: '#C8B08C', tone: '올리브 베이지' },
+];
+
+/** 얼굴형 옵션 */
+export const FACE_SHAPE_OPTIONS = ['V라인', 'V라인 + 차가운 광대', '둥근 V라인', '성숙 V라인', '부드러운 V라인', '계란형', '둥근형', '각진형'];
+
+/** 표정 프리셋 */
+export const EXPRESSION_PRESETS = [
+  '부드러운 미소', '무표정 · 강한 시선', '환한 미소·치아 살짝 보임',
+  '차분한 무표정 · 옅은 미소', '따뜻한 미소', '시크한 무심함',
+  '자신감 넘치는 미소', '수줍은 미소',
+];
+
+/** 헤어 프리셋 */
+export const HAIR_PRESETS = [
+  '어깨 길이 흑갈색 단발', '슬릭 또는 미디엄 다크', '어깨 길이 자연 갈색·웨이브',
+  '미디엄 · 차분한 톤', '단발 또는 미디엄·따뜻 톤', '긴 생머리 흑갈색',
+  '숏컷 · 모던 스타일', '포니테일 · 활동적',
+];
+
+/** 메이크업 프리셋 */
+export const MAKEUP_PRESETS = [
+  '누드 · MLBB 코랄핑크', '매트 · 강한 시선 · 로즈브라운', '윤기 · 코랄/살구 립',
+  '세미매트 · 로즈브라운 립', '따뜻한 톤 · 코랄/로즈 립', '글로시 · 피치 립',
+  '내추럴 · 베이지 립', '볼드 · 레드/버건디 립',
+];
+
+/** 앵커(특이점) 프리셋 */
+export const ANCHOR_PRESETS = [
+  '왼쪽 입꼬리 위 작은 점', '오른쪽 눈썹 끝 짧음', '콧대 중간 주근깨 1-2개',
+  '왼쪽 눈 밑 미세 점', '오른쪽 광대 위 점', '왼쪽 관자놀이 작은 점',
+  '오른쪽 콧볼 옆 미세 점', '이마 중앙 미세 점',
+];
+
+/** 체형 프리셋 */
+export const HEIGHT_PRESETS = [
+  '158-160cm 슬림', '162-165cm 슬림', '165-167cm 슬림',
+  '168-170cm 슬림', '160-163cm 보통', '165-168cm 보통',
+];
 
 /** 거부 컷 10대 기준 */
 export function getRejectCriteria(): string[] {
