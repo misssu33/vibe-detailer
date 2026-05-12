@@ -3,6 +3,7 @@
  * 한국 이커머스 상세페이지 자동화를 위한 핵심 데이터 엔진
  * 모델 DNA, 감정곡선, 포즈, 의상, 네거티브, 8페이지 매트릭스 등
  * 사용자 SOP v4.1 기반 완전 구현
+ * v5.0 — 7-Section Framework + 플랫폼 스펙 + 카피 엔진 추가
  */
 
 // ─── Types ───────────────────────────────────────────
@@ -18,6 +19,51 @@ export type PoseId = 'POSE-01' | 'POSE-02' | 'POSE-03' | 'POSE-04' | 'POSE-05' |
 export type GenerationMode = 'full8' | 'pas5' | 'ba2' | 'custom';
 
 export type PageId = 'P01' | 'P02' | 'P03' | 'P04' | 'P05' | 'P06a' | 'P06b' | 'P07' | 'P08';
+
+// ─── NEW v5.0: 7-Section Types ────────────────────────
+
+export type SectionId = 'S1_HERO' | 'S2_PAIN' | 'S3_BENEFIT' | 'S4_SPEC' | 'S5_LIFESTYLE' | 'S6_SOCIAL' | 'S7_CTA';
+
+export type PlatformId = 'coupang' | 'smartstore' | 'musinsa' | 'cm29' | 'kurly' | 'oliveyoung' | 'wconcept' | 'self';
+
+export interface DetailPageSection {
+  id: SectionId;
+  index: number;
+  title: string;
+  titleEn: string;
+  purpose: string;
+  linkedPageIds: PageId[];
+  linkedEmoIds: EmoId[];
+  copyFormula: string;
+  copyExamples: Record<CategoryId, string>;
+  layoutGuide: string;
+  mobileSpec: string;
+  checkpoints: string[];
+  kpiTarget: string;
+  forbiddenPatterns: string[];
+}
+
+export interface PlatformSpec {
+  id: PlatformId;
+  name: string;
+  imageWidthPx: number;
+  maxFileSizeMB: number;
+  formats: string[];
+  prohibitions: string[];
+  seoStrategy: string;
+  sectionPriority: SectionId[];
+  colorNote: string;
+}
+
+export interface SectionCopyResult {
+  sectionId: SectionId;
+  headline: string;
+  subCopy: string;
+  bodyCopy: string;
+  ctaCopy: string;
+}
+
+// ─── Existing Types (unchanged) ─────────────────────
 
 export interface DnaProfile {
   id: DnaId;
@@ -442,7 +488,7 @@ export const HAND_GESTURES: Record<string, { name: string; description: string; 
   D: { name: '어깨 으쓱 (캐주얼)', description: '어깨 으쓱하며 제품 들기', suitableCategories: ['fashion', 'living'] },
 };
 
-// ─── Outfit Library (simplified) ─────────────────────
+// ─── Outfit Library ──────────────────────────────────
 
 export const OUTFIT_LIBRARY: Record<CategoryId, { items: Array<{ name: string; hex: string; material: string; fit: string }> }> = {
   fashion: {
@@ -498,7 +544,418 @@ export const OUTFIT_LIBRARY: Record<CategoryId, { items: Array<{ name: string; h
   },
 };
 
-// ─── Core Engine Functions ───────────────────────────
+// ════════════════════════════════════════════════════
+// ─── NEW v5.0: 7-Section Framework Database ──────────
+// ════════════════════════════════════════════════════
+
+export const DETAIL_PAGE_SECTIONS: Record<SectionId, DetailPageSection> = {
+  S1_HERO: {
+    id: 'S1_HERO', index: 1,
+    title: '후킹 배너', titleEn: 'Hero Shot',
+    purpose: '3초 안에 시선을 사로잡고 핵심 USP를 전달',
+    linkedPageIds: ['P01'],
+    linkedEmoIds: ['EMO-01'],
+    copyFormula: '[핵심 결과 15자 이내] + [즉시 혜택] + [지금 이유]',
+    copyExamples: {
+      beauty: '피부가 달라지는 7일, 지금 시작하세요',
+      fashion: '오늘 입고 싶어지는 딱 하나',
+      food: '한 입에 반하는 맛, 직접 느껴보세요',
+      living: '공간이 달라지면 일상이 달라집니다',
+      health: '72시간, 몸이 바뀌는 걸 느끼세요',
+      digital: '일이 빨라지는 단 하나의 선택',
+      appliance: '집이 편해지는 순간부터 시작',
+      kids_pet: '아이의 안전, 엄마의 안심',
+    },
+    layoutGuide: '메인카피 15자 이내 / 제품+모델 1~2컷 집중 / 핵심 혜택 1줄 / 불필요한 배경 제거',
+    mobileSpec: '750px 기준, 상단 fold 영역 내 핵심 정보 완결, 텍스트 최소 28px Bold',
+    checkpoints: [
+      '메인 카피가 15자 이내인가',
+      'P01(EMO-01 신뢰·환영) 컷을 활용했는가',
+      '3초 내 핵심 USP 전달이 가능한가',
+      '모바일 28px 이상 폰트 확인',
+      '배경이 단순하고 제품에 시선 집중되는가',
+      '즉시 구매 유도 요소(가격/혜택) 포함 여부',
+    ],
+    kpiTarget: '3초 이탈률 40% 이하',
+    forbiddenPatterns: ['복잡한 배경', '텍스트 5줄 이상', '여러 제품 동시 나열', '작은 글씨 스펙 정보'],
+  },
+  S2_PAIN: {
+    id: 'S2_PAIN', index: 2,
+    title: '문제 제기', titleEn: 'Pain Point',
+    purpose: '"맞아, 나도 이런 불편함 있어" 공감 형성',
+    linkedPageIds: ['P02'],
+    linkedEmoIds: ['EMO-02'],
+    copyFormula: '"이런 경험 있으신가요?" + [구체적 일상 상황 2~3개]',
+    copyExamples: {
+      beauty: '매일 아침, 거울 속 칙칙한 피부가 지치셨나요?',
+      fashion: '옷은 많은데 막상 입을 게 없는 그 기분, 아시죠?',
+      food: '간편하면서도 건강한 한 끼, 포기하고 계셨나요?',
+      living: '인테리어를 바꾸고 싶지만 뭐부터 해야 할지 막막하셨죠?',
+      health: '열심히 했는데도 피곤함이 사라지지 않으시죠?',
+      digital: '반복 작업에 하루를 다 써버린 적 있으신가요?',
+      appliance: '집 안 공기가 뭔가 찜찜하게 느껴지셨나요?',
+      kids_pet: '아이에게 뭘 먹여야 할지 매번 고민되시죠?',
+    },
+    layoutGuide: '페인포인트 최대 3가지 / 아이콘+짧은 텍스트 조합 / 공감형 질문 어투 / 과도한 부정적 이미지 지양',
+    mobileSpec: '아이콘 최소 48px, 텍스트 16px 이상, 1열 세로 나열 권장',
+    checkpoints: [
+      'P02(EMO-02 고민·페인) 컷을 활용했는가',
+      '페인포인트가 3개 이하로 집중되어 있는가',
+      '타겟 고객이 즉시 공감할 언어를 사용했는가',
+      '질문형 문장으로 참여감을 유도했는가',
+      '부정적 이미지가 과도하지 않은가',
+    ],
+    kpiTarget: 'S2 스크롤 도달률 80% 이상',
+    forbiddenPatterns: ['4개 이상 페인포인트', '지나치게 부정적인 이미지', '타겟과 무관한 고민'],
+  },
+  S3_BENEFIT: {
+    id: 'S3_BENEFIT', index: 3,
+    title: '솔루션 제시', titleEn: 'Key Benefit',
+    purpose: '"이 제품이 해결해줘" 기대감 조성과 핵심 차별점 전달',
+    linkedPageIds: ['P03', 'P04'],
+    linkedEmoIds: ['EMO-03', 'EMO-04'],
+    copyFormula: '[USP 키워드] + [수치화 근거] + [경쟁 대비 차별점]',
+    copyExamples: {
+      beauty: '흡수율 300% · 72시간 수분 · 피부과 임상 완료',
+      fashion: '어깨 핏 완벽 · 3계절 착용 · 머신워시 가능',
+      food: '국내산 100% · 당일 새벽 수확 · 방부제 ZERO',
+      living: '조립 10분 · 스크래치 10년 보증 · 공간 활용 2배',
+      health: '흡수율 93% · 8주 후 차이 · 식약처 인증 원료',
+      digital: '처리속도 3배 · 배터리 48h · 무게 890g',
+      appliance: 'PM2.5 99.97% 제거 · 소음 28dB · 전기료 월 500원',
+      kids_pet: '무형광 · 무독성 인증 · 영유아 피부과 테스트',
+    },
+    layoutGuide: 'Rule of 3 적용 (베네핏 정확히 3가지) / 수치 강조 Bold / Before-After 또는 인포그래픽 포함',
+    mobileSpec: '베네핏 카드 1열 세로 스크롤, 아이콘+수치+설명 3단 구조, 수치 폰트 36px 이상',
+    checkpoints: [
+      'P03·P04 컷(EMO-03·04)을 활용했는가',
+      '베네핏이 정확히 3가지인가 (Rule of 3)',
+      '모든 베네핏에 수치 근거가 있는가',
+      'Before/After 또는 비교 인포그래픽 포함 여부',
+      '경쟁사 대비 차별점이 명확한가',
+    ],
+    kpiTarget: 'S3 체류시간 20초 이상',
+    forbiddenPatterns: ['근거 없는 최고·최대 표현', '4개 이상 베네핏 나열', '경쟁사 브랜드명 직접 언급'],
+  },
+  S4_SPEC: {
+    id: 'S4_SPEC', index: 4,
+    title: '제품 상세 정보', titleEn: 'Detail Spec',
+    purpose: '"믿을 수 있네" 신뢰 구축과 구매 결정 지원',
+    linkedPageIds: ['P04'],
+    linkedEmoIds: ['EMO-04'],
+    copyFormula: '[성분/소재/규격] + [인증·수상] + [경쟁 비교표]',
+    copyExamples: {
+      beauty: '히알루론산 5중 복합체 · 비건 인증 · EWG 그린 등급',
+      fashion: '캐시미어 30% 울 70% · KS 세탁 인증 · 국내 봉제',
+      food: '원산지: 강원도 정선 · HACCP 인증 · 무첨가물 15종',
+      living: '소재: 참나무 MDF · 친환경 E0 등급 · KC 안전인증',
+      health: '주성분: 코엔자임Q10 · 식약처 기능성 원료 · GMP 인증',
+      digital: 'CPU: M3 Pro · RAM: 18GB · 배터리: 70Wh',
+      appliance: '필터: H14 HEPA · 소비전력: 45W · KC·CE 인증',
+      kids_pet: '소재: 오가닉 코튼 100% · KC 안전인증 · 유해물질 불검출',
+    },
+    layoutGuide: '스펙 표(규격/성분/인증) + 인증 배지 모음 + 경쟁사 비교표 / 정보 밀도 높게',
+    mobileSpec: '가로 스크롤 표 → 세로형 리스트로 변환, 인증 배지 40px 이상, 접이식 아코디언 활용',
+    checkpoints: [
+      '제품 SOP 스펙 정보와 100% 일치하는가',
+      '인증·수상 정보가 포함되었는가',
+      '경쟁사 비교표가 있는가',
+      '법적 과장 표현이 없는가',
+      '모바일에서 표가 세로형으로 변환되는가',
+      '맞춤법·수치 오류가 없는가',
+    ],
+    kpiTarget: 'S4 도달률 60% 이상',
+    forbiddenPatterns: ['허위 인증 배지', '의학적 효능 직접 표현', '경쟁사 비방', '미확인 수치 사용'],
+  },
+  S5_LIFESTYLE: {
+    id: 'S5_LIFESTYLE', index: 5,
+    title: '사용 시나리오', titleEn: 'Lifestyle',
+    purpose: '"나도 이렇게 될 수 있어" 욕구 자극과 라이프스타일 공감',
+    linkedPageIds: ['P05', 'P07'],
+    linkedEmoIds: ['EMO-05', 'EMO-07'],
+    copyFormula: '[구체적 일상 장면] + [감성 키워드] + [간단 사용법]',
+    copyExamples: {
+      beauty: '출근 전 5분, 피부가 빛나는 하루를 시작하세요',
+      fashion: '월요일 아침도 자신 있게, 어디서든 눈에 띄는 핏',
+      food: '냉장고에서 꺼내 바로, 든든한 아침이 완성됩니다',
+      living: '주말 오후, 내 공간이 카페가 되는 순간',
+      health: '하루 한 번, 꾸준함이 만드는 몸의 변화',
+      digital: '카페에서도 집에서도, 일이 어디서든 따라옵니다',
+      appliance: '잠들기 전 버튼 하나, 아침 공기가 달라집니다',
+      kids_pet: '아이가 좋아하는 시간, 엄마도 안심하는 시간',
+    },
+    layoutGuide: '라이프스타일 컷(전신/환경샷) 2~3장 + 사용 스텝 가이드 / 모델 SOP 기반 연출',
+    mobileSpec: '전체 화면 이미지 + 텍스트 오버레이, 이미지 위 카피 가독성 확보 (배경 디밍 30%)',
+    checkpoints: [
+      'P05(EMO-05 만족)·P07(EMO-07 일상) 컷을 활용했는가',
+      '모델 SOP 연출 가이드를 준수했는가',
+      '타겟 라이프스타일이 구체적으로 반영되었는가',
+      '사용법이 3단계 이내로 간결한가',
+      '텍스트 오버레이 가독성이 확보되었는가',
+    ],
+    kpiTarget: 'S5 체류시간 15초 이상',
+    forbiddenPatterns: ['과도한 보정으로 비현실적인 라이프스타일', '타겟과 무관한 상황 연출', '사용법 4단계 이상'],
+  },
+  S6_SOCIAL: {
+    id: 'S6_SOCIAL', index: 6,
+    title: '사회적 증거', titleEn: 'Social Proof',
+    purpose: '"다들 좋다고 하네" 구매 확신 강화와 신뢰도 증폭',
+    linkedPageIds: ['P07'],
+    linkedEmoIds: ['EMO-07'],
+    copyFormula: '[누적 수치] + [베스트 리뷰 인용] + [미디어/SNS 언급]',
+    copyExamples: {
+      beauty: '누적 판매 10만개 · ★4.9 (2,847건) · "진짜 달라졌어요"',
+      fashion: '재구매율 68% · ★4.8 (1,203건) · "세탁해도 그대로예요"',
+      food: '정기구독 회원 3만명 · ★4.9 (5,102건) · "매일 아침 필수템"',
+      living: '인테리어 전문가 추천 · ★4.7 (892건) · "오래쓸수록 좋아요"',
+      health: '약사 추천 제품 · ★4.8 (3,401건) · "3주 만에 느껴졌어요"',
+      digital: 'IT 전문 매체 9개 추천 · ★4.9 (641건) · "생산성 2배 됐어요"',
+      appliance: '소비자 만족도 1위 · ★4.8 (1,847건) · "공기가 확실히 달라요"',
+      kids_pet: '소아과 의사 추천 · ★4.9 (2,203건) · "아이가 먼저 찾아요"',
+    },
+    layoutGuide: '별점+리뷰수 크게 표시 / 베스트 리뷰 3개 카드형 / SNS 언급 스크린샷 / 언론 로고 배치',
+    mobileSpec: '리뷰 카드 가로 슬라이드 (swipe), 별점 폰트 24px 이상, 리뷰어 닉네임 표시',
+    checkpoints: [
+      'P07(EMO-07 자연 일상) 컷을 활용했는가',
+      '실제 수치 데이터가 포함되었는가 (판매량/평점/리뷰수)',
+      '과장 없는 실제 리뷰를 사용했는가',
+      '미디어·SNS 언급이 있는가',
+      '리뷰 카드가 모바일 슬라이드로 구성되었는가',
+    ],
+    kpiTarget: '리뷰 전환율 구매 대비 15% 이상',
+    forbiddenPatterns: ['가짜 리뷰 조작', '별점 부풀리기', '타사 제품 리뷰 혼용', '구체성 없는 "좋아요" 리뷰만'],
+  },
+  S7_CTA: {
+    id: 'S7_CTA', index: 7,
+    title: '구매 유도 클로징', titleEn: 'Call to Action',
+    purpose: '"지금 사야겠다" 최종 구매 전환 유도',
+    linkedPageIds: ['P08'],
+    linkedEmoIds: ['EMO-08'],
+    copyFormula: '[한정성/긴급성] + [혜택 3가지 요약] + [즉시 행동 동사]',
+    copyExamples: {
+      beauty: '오늘만 30% · 무료배송 · 30일 환불보장 → 지금 구매하기',
+      fashion: '이번 시즌 한정 · 무료배송 · 7일 무료반품 → 바로 구매하기',
+      food: '첫 구매 20% 할인 · 새벽배송 · 정기구독 추가 5% → 주문하기',
+      living: '설치 무료 · 12개월 무이자 · 1년 AS 보장 → 견적 받기',
+      health: '2+1 이벤트 · 무료배송 · 효과 없으면 환불 → 지금 시작하기',
+      digital: '교육할인 적용 · 무료 체험 14일 · 해지 위약금 없음 → 무료 시작',
+      appliance: '지금 주문 시 필터 1년치 증정 · 무료설치 · 5년 AS → 구매하기',
+      kids_pet: '첫 구매 15% 할인 · 무료배송 · 영유아 안심 보장 → 구매하기',
+    },
+    layoutGuide: 'CTA 버튼 크게(56px+) / 혜택 3가지 아이콘+텍스트 / 한정성 카운트다운 or 뱃지 / P08 컷 배치',
+    mobileSpec: 'Fixed 하단 CTA 바 구현 권장, 버튼 최소 높이 56px, 버튼 텍스트 16px Bold',
+    checkpoints: [
+      'P08(EMO-08 권유·확신) 컷을 활용했는가',
+      'CTA 버튼이 모바일 최소 56px인가',
+      '한정성 문구가 포함되었는가',
+      '혜택이 3가지 이내로 요약되었는가',
+      '즉시 행동 유도 동사(구매·시작·신청)를 사용했는가',
+      'Fixed 하단 CTA 바가 구현되었는가',
+    ],
+    kpiTarget: '전환율(CVR) 카테고리 평균 +20%',
+    forbiddenPatterns: ['CTA 버튼 없음', '혜택 4개 이상 나열로 희석', '허위 마감 기한', '클릭 후 다른 페이지로 이탈'],
+  },
+};
+
+// ─── NEW v5.0: Platform Spec Database ────────────────
+
+export const PLATFORM_SPECS: Record<PlatformId, PlatformSpec> = {
+  coupang: {
+    id: 'coupang', name: '쿠팡',
+    imageWidthPx: 780,
+    maxFileSizeMB: 10,
+    formats: ['JPG', 'PNG'],
+    prohibitions: ['타 플랫폼 언급', '외부 링크 삽입', '로켓배송 불가 문구', '타사 가격 비교'],
+    seoStrategy: '가격 경쟁력 + 로켓배송 강조, 상단 3섹션 내 가격 정보 노출, 빠른 구매 결정 유도',
+    sectionPriority: ['S1_HERO', 'S3_BENEFIT', 'S4_SPEC', 'S7_CTA', 'S6_SOCIAL', 'S2_PAIN', 'S5_LIFESTYLE'],
+    colorNote: '밝고 선명한 컬러 선호, 쿠팡 로켓 오렌지(#FF6000)와 충돌 피하기',
+  },
+  smartstore: {
+    id: 'smartstore', name: '네이버 스마트스토어',
+    imageWidthPx: 860,
+    maxFileSizeMB: 20,
+    formats: ['JPG', 'PNG'],
+    prohibitions: ['과장 광고 문구', '공정거래위원회 위반 표현', '클릭 유도 낚시성 문구'],
+    seoStrategy: '검색 키워드 카피 자연 포함, 상세정보 충실도 높게, 네이버 쇼핑 리뷰 연동 강조',
+    sectionPriority: ['S1_HERO', 'S4_SPEC', 'S3_BENEFIT', 'S6_SOCIAL', 'S2_PAIN', 'S5_LIFESTYLE', 'S7_CTA'],
+    colorNote: '네이버 그린(#03C75A) 계열과 조화, 신뢰감 있는 블루 계열도 적합',
+  },
+  musinsa: {
+    id: 'musinsa', name: '무신사',
+    imageWidthPx: 860,
+    maxFileSizeMB: 5,
+    formats: ['JPG'],
+    prohibitions: ['타 브랜드 로고 노출', '브랜드 로고 규정 크기 위반', '모델 연령 미표기'],
+    seoStrategy: '스타일링 컷 비중 증대, 착용컷 필수, 핏·소재 정보 상단 배치, 모델 신체 정보 표기 권장',
+    sectionPriority: ['S1_HERO', 'S5_LIFESTYLE', 'S3_BENEFIT', 'S4_SPEC', 'S6_SOCIAL', 'S2_PAIN', 'S7_CTA'],
+    colorNote: '무신사 다크 무드 선호, 블랙·다크그레이 계열 배경 적합',
+  },
+  cm29: {
+    id: 'cm29', name: '29CM',
+    imageWidthPx: 860,
+    maxFileSizeMB: 10,
+    formats: ['JPG', 'PNG'],
+    prohibitions: ['저해상도 이미지', '브랜드 세계관과 무관한 콘텐츠'],
+    seoStrategy: '에디토리얼 느낌 레이아웃, 브랜드 스토리 + 감성 카피 강화, 라이프스타일 연출 중심',
+    sectionPriority: ['S1_HERO', 'S5_LIFESTYLE', 'S2_PAIN', 'S3_BENEFIT', 'S6_SOCIAL', 'S4_SPEC', 'S7_CTA'],
+    colorNote: '29CM 미니멀 화이트 배경 선호, 고채도 컬러 자제',
+  },
+  kurly: {
+    id: 'kurly', name: '마켓컬리',
+    imageWidthPx: 750,
+    maxFileSizeMB: 10,
+    formats: ['JPG', 'PNG'],
+    prohibitions: ['허위 원산지 표기', '효능 과장 표현', '비위생적 이미지'],
+    seoStrategy: '신선도·원산지 최상단 배치, 감각적 식품 카피, 새벽배송 혜택 강조, 생산자 스토리 포함',
+    sectionPriority: ['S1_HERO', 'S4_SPEC', 'S2_PAIN', 'S5_LIFESTYLE', 'S3_BENEFIT', 'S6_SOCIAL', 'S7_CTA'],
+    colorNote: '마켓컬리 퍼플(#5F0080) 계열과 조화, 식품 특성상 따뜻한 자연광 컬러 권장',
+  },
+  oliveyoung: {
+    id: 'oliveyoung', name: '올리브영',
+    imageWidthPx: 860,
+    maxFileSizeMB: 10,
+    formats: ['JPG', 'PNG'],
+    prohibitions: ['의학적 효능 직접 표현', '식약처 미인증 효능 주장', 'K-뷰티 오인 표현'],
+    seoStrategy: '성분·효능 키워드 강조, 피부 타입별 세분화, 올영픽/베스트셀러 뱃지 활용',
+    sectionPriority: ['S1_HERO', 'S3_BENEFIT', 'S4_SPEC', 'S6_SOCIAL', 'S2_PAIN', 'S5_LIFESTYLE', 'S7_CTA'],
+    colorNote: '올리브영 그린(#00A770) 계열, 뷰티 특성상 클린·투명 이미지 선호',
+  },
+  wconcept: {
+    id: 'wconcept', name: 'W컨셉',
+    imageWidthPx: 860,
+    maxFileSizeMB: 10,
+    formats: ['JPG', 'PNG'],
+    prohibitions: ['저품질 이미지', '브랜드 프리미엄 이미지 훼손 콘텐츠'],
+    seoStrategy: '디자이너·브랜드 스토리 강조, 프리미엄 소재 클로즈업, 컨템포러리 무드 연출',
+    sectionPriority: ['S1_HERO', 'S5_LIFESTYLE', 'S4_SPEC', 'S3_BENEFIT', 'S6_SOCIAL', 'S2_PAIN', 'S7_CTA'],
+    colorNote: 'W컨셉 모노크롬 감성, 블랙·화이트·크림 톤 선호',
+  },
+  self: {
+    id: 'self', name: '자사몰',
+    imageWidthPx: 750,
+    maxFileSizeMB: 999,
+    formats: ['WebP', 'JPG', 'PNG'],
+    prohibitions: [],
+    seoStrategy: '브랜드 아이덴티티 극대화, 풀 스토리텔링 가능, 브랜딩 강화, 자체 CRM 연동',
+    sectionPriority: ['S1_HERO', 'S2_PAIN', 'S3_BENEFIT', 'S5_LIFESTYLE', 'S4_SPEC', 'S6_SOCIAL', 'S7_CTA'],
+    colorNote: '브랜드 가이드라인 100% 적용, WebP 포맷으로 최적화 권장',
+  },
+};
+
+// ─── NEW v5.0: Platform Name → ID 매핑 ───────────────
+
+export const PLATFORM_NAME_TO_ID: Record<string, PlatformId> = {
+  '쿠팡': 'coupang',
+  '스마트스토어': 'smartstore',
+  '네이버 스마트스토어': 'smartstore',
+  '무신사': 'musinsa',
+  '29CM': 'cm29',
+  '마켓컬리': 'kurly',
+  '올리브영': 'oliveyoung',
+  'W컨셉': 'wconcept',
+  '자사몰': 'self',
+  '기타': 'self',
+};
+// ─── NEW v5.0: Section Copy Generator ────────────────
+
+export function generateSectionCopy(
+  sectionId: SectionId,
+  categoryId: CategoryId,
+  productName: string,
+): SectionCopyResult {
+  const section = DETAIL_PAGE_SECTIONS[sectionId];
+  const baseExample = section.copyExamples[categoryId];
+
+  const headlineMap: Record<SectionId, string> = {
+    S1_HERO: productName,
+    S2_PAIN: '혹시 이런 고민 있으신가요?',
+    S3_BENEFIT: `${productName}만의 3가지 차이`,
+    S4_SPEC: '성분과 품질이 다릅니다',
+    S5_LIFESTYLE: `${productName}와 함께하는 일상`,
+    S6_SOCIAL: `${productName}을 선택한 이유`,
+    S7_CTA: '지금 바로 시작하세요',
+  };
+
+  const subCopyMap: Record<SectionId, string> = {
+    S1_HERO: baseExample,
+    S2_PAIN: baseExample,
+    S3_BENEFIT: baseExample,
+    S4_SPEC: baseExample,
+    S5_LIFESTYLE: baseExample,
+    S6_SOCIAL: baseExample,
+    S7_CTA: baseExample,
+  };
+
+  const bodyCopyMap: Record<SectionId, string> = {
+    S1_HERO: `${productName}은 한국 이커머스 트렌드를 반영한 제품입니다.\n카피 공식: ${section.copyFormula}`,
+    S2_PAIN: `페인포인트를 구체적으로 서술합니다.\n카피 공식: ${section.copyFormula}`,
+    S3_BENEFIT: `핵심 베네핏 3가지를 수치와 함께 제시합니다.\n카피 공식: ${section.copyFormula}`,
+    S4_SPEC: `성분, 소재, 인증 정보를 상세하게 기재합니다.\n카피 공식: ${section.copyFormula}`,
+    S5_LIFESTYLE: `타겟 고객의 일상 속 사용 시나리오를 보여줍니다.\n카피 공식: ${section.copyFormula}`,
+    S6_SOCIAL: `실제 고객 리뷰와 수치 데이터를 제시합니다.\n카피 공식: ${section.copyFormula}`,
+    S7_CTA: `한정 혜택과 즉시 구매 유도 문구를 배치합니다.\n카피 공식: ${section.copyFormula}`,
+  };
+
+  const ctaMap: Record<SectionId, string> = {
+    S1_HERO: '지금 확인하기 →',
+    S2_PAIN: '해결책 보기 →',
+    S3_BENEFIT: '자세히 알아보기 →',
+    S4_SPEC: '전성분 확인하기 →',
+    S5_LIFESTYLE: '나도 해보기 →',
+    S6_SOCIAL: '리뷰 전체 보기 →',
+    S7_CTA: '지금 구매하기 →',
+  };
+
+  return {
+    sectionId,
+    headline: headlineMap[sectionId],
+    subCopy: subCopyMap[sectionId],
+    bodyCopy: bodyCopyMap[sectionId],
+    ctaCopy: ctaMap[sectionId],
+  };
+}
+
+// ─── NEW v5.0: Full Detail Page Plan Generator ───────
+
+export interface DetailPagePlan {
+  productName: string;
+  categoryId: CategoryId;
+  platformId: PlatformId | null;
+  sections: Array<{
+    section: DetailPageSection;
+    copy: SectionCopyResult;
+    linkedPages: StoryboardPage[];
+  }>;
+  platformSpec: PlatformSpec | null;
+}
+
+export function generateDetailPagePlan(
+  productName: string,
+  categoryId: CategoryId,
+  platformName: string,
+  storyboard: StoryboardResult,
+): DetailPagePlan {
+  const platformId = PLATFORM_NAME_TO_ID[platformName] || null;
+  const platformSpec = platformId ? PLATFORM_SPECS[platformId] : null;
+
+  // 플랫폼별 섹션 순서 적용 또는 기본 순서 사용
+  const sectionOrder: SectionId[] = platformSpec?.sectionPriority || [
+    'S1_HERO', 'S2_PAIN', 'S3_BENEFIT', 'S4_SPEC', 'S5_LIFESTYLE', 'S6_SOCIAL', 'S7_CTA',
+  ];
+
+  const sections = sectionOrder.map(sectionId => {
+    const section = DETAIL_PAGE_SECTIONS[sectionId];
+    const copy = generateSectionCopy(sectionId, categoryId, productName);
+    const linkedPages = storyboard.pages.filter(p =>
+      section.linkedPageIds.includes(p.slot.id as PageId)
+    );
+    return { section, copy, linkedPages };
+  });
+
+  return { productName, categoryId, platformId, sections, platformSpec };
+}
+
+// ─── Core Engine Functions (unchanged) ───────────────
 
 /** 카테고리와 가격대 기반 DNA 자동 추천 */
 export function recommendDna(category: CategoryId, priceRange?: string): DnaId[] {
@@ -625,6 +1082,31 @@ export function generateStoryboard(
   return { pages: storyboardPages, mode };
 }
 
+/** 커스텀 DnaProfile을 직접 사용하여 스토리보드 생성 */
+export function generateStoryboardWithProfile(
+  categoryId: CategoryId,
+  dna: DnaProfile,
+  mode: GenerationMode,
+  productName: string,
+  productColor?: string,
+): StoryboardResult {
+  const category = CATEGORY_DATABASE[categoryId];
+  const pages = getPageFlow(categoryId, mode);
+  const storyboardPages: StoryboardPage[] = pages.map(page => {
+    const emoId = typeof page.emo === 'string' && page.emo.startsWith('EMO-')
+      ? page.emo as EmoId
+      : null;
+    const emoProfile = emoId ? EMO_DATABASE[emoId] : null;
+    return {
+      slot: page,
+      emoProfile,
+      prompt: buildPrompt(dna, page, emoProfile, category, productName, productColor),
+      copyDraft: generateCopyDraft(category, page, productName),
+    };
+  });
+  return { pages: storyboardPages, mode };
+}
+
 /** Phase 체크리스트 반환 */
 export function getChecklist(): Array<{ phase: string; items: string[] }> {
   return [
@@ -685,29 +1167,20 @@ export function getChecklist(): Array<{ phase: string; items: string[] }> {
   ];
 }
 
-/** 커스텀 DnaProfile을 직접 사용하여 스토리보드 생성 */
-export function generateStoryboardWithProfile(
-  categoryId: CategoryId,
-  dna: DnaProfile,
-  mode: GenerationMode,
-  productName: string,
-  productColor?: string,
-): StoryboardResult {
-  const category = CATEGORY_DATABASE[categoryId];
-  const pages = getPageFlow(categoryId, mode);
-  const storyboardPages: StoryboardPage[] = pages.map(page => {
-    const emoId = typeof page.emo === 'string' && page.emo.startsWith('EMO-')
-      ? page.emo as EmoId
-      : null;
-    const emoProfile = emoId ? EMO_DATABASE[emoId] : null;
-    return {
-      slot: page,
-      emoProfile,
-      prompt: buildPrompt(dna, page, emoProfile, category, productName, productColor),
-      copyDraft: generateCopyDraft(category, page, productName),
-    };
-  });
-  return { pages: storyboardPages, mode };
+/** 거부 컷 10대 기준 */
+export function getRejectCriteria(): string[] {
+  return [
+    '콜라주·분할 화면',
+    '한 화면에 인물 2명 이상',
+    '얼굴 비율 변화 (눈 간격·코 길이·입 위치)',
+    '헤어 5% 이상 변화 (컬러·길이)',
+    '손가락 6개 이상/4개 이하',
+    '치아 비대칭·왜곡',
+    '눈동자 좌우 비대칭·초점 어긋남',
+    '귀 위치 비대칭',
+    '의상 베이스 톤 변화',
+    '플라스틱 피부·과한 광택',
+  ];
 }
 
 /** 기본 커스텀 DNA 프로필 생성 */
@@ -779,19 +1252,3 @@ export const HEIGHT_PRESETS = [
   '158-160cm 슬림', '162-165cm 슬림', '165-167cm 슬림',
   '168-170cm 슬림', '160-163cm 보통', '165-168cm 보통',
 ];
-
-/** 거부 컷 10대 기준 */
-export function getRejectCriteria(): string[] {
-  return [
-    '콜라주·분할 화면',
-    '한 화면에 인물 2명 이상',
-    '얼굴 비율 변화 (눈 간격·코 길이·입 위치)',
-    '헤어 5% 이상 변화 (컬러·길이)',
-    '손가락 6개 이상/4개 이하',
-    '치아 비대칭·왜곡',
-    '눈동자 좌우 비대칭·초점 어긋남',
-    '귀 위치 비대칭',
-    '의상 베이스 톤 변화',
-    '플라스틱 피부·과한 광택',
-  ];
-}

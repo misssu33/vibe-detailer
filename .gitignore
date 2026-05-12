@@ -2,6 +2,9 @@
 **/node_modules
 .pnpm-store/
 
+# 로컬 중첩 클론(실수 방지)
+vibe-detailer/
+
 # Build outputs
 dist/
 build/
